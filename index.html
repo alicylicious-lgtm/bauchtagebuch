@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Bauchtagebuch</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2E7D74">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Bauchtagebuch">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
@@ -228,23 +236,28 @@ const TYPES = {
 };
 
 let DATA = {settings:{name:"Bruce",birth:"",extra:""}, entries:[]};
-let memOnly = false;
+
 let editId = null, curType = null, selChips = [];
 const KEY = "bauchtagebuch:data";
 
 async function load(){
   try{
-    const r = await window.storage.get(KEY);
-    if(r && r.value) DATA = JSON.parse(r.value);
-  }catch(e){ /* Schlüssel existiert noch nicht oder Storage nicht verfügbar */
-    if(!window.storage) memOnly = true;
-  }
+    if(typeof localStorage !== "undefined" && localStorage.getItem(KEY)){
+      DATA = JSON.parse(localStorage.getItem(KEY));
+    } else if(window.storage){
+      const r = await window.storage.get(KEY);
+      if(r && r.value) DATA = JSON.parse(r.value);
+    }
+  }catch(e){ /* noch keine Daten vorhanden */ }
   if(!DATA.settings.name) DATA.settings.name = "Bruce";
   render();
 }
 async function persist(){
-  if(memOnly || !window.storage) return;
-  try{ await window.storage.set(KEY, JSON.stringify(DATA)); }
+  const json = JSON.stringify(DATA);
+  try{
+    if(typeof localStorage !== "undefined"){ localStorage.setItem(KEY, json); return; }
+  }catch(e){ /* localStorage nicht verfügbar, z. B. in der Claude-Vorschau */ }
+  try{ if(window.storage) await window.storage.set(KEY, json); }
   catch(e){ console.error("Speichern fehlgeschlagen", e); }
 }
 function toast(msg){
